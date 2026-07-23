@@ -21,6 +21,9 @@ public class PlayerShipController : NetworkBehaviour
 
     private InputSystem_Actions _input;
 
+    [SerializeField] private Bullet _bulletPrefab;
+    [SerializeField] private Transform _spawnPoint;
+
     private void Awake()
     {
         _input = new();
@@ -31,12 +34,27 @@ public class PlayerShipController : NetworkBehaviour
         base.OnNetworkSpawn();
         if (!IsOwner) return;
         _input.Player.Enable();
+        _input.Player.Attack.performed += OnPlayerAttack;
         MovementAngle = Random.Range(0f, 360f);
     }
     public override void OnNetworkDespawn()
     {
         base.OnNetworkDespawn();
+        _input.Player.Attack.performed -= OnPlayerAttack;
         _input.Player.Disable();
+    }
+
+    private void OnPlayerAttack(InputAction.CallbackContext _)
+    {
+        SpawnBulletRpc();
+    }
+
+    [Rpc(SendTo.Server)]
+    private void SpawnBulletRpc()
+    {
+        var bullet = Instantiate(_bulletPrefab, _spawnPoint.position, Quaternion.identity);
+        bullet.transform.up = transform.up;
+        bullet.NetworkObject.SpawnAsPlayerObject(NetworkManager.Singleton.LocalClientId);
     }
 
     private void Update()

@@ -1,13 +1,35 @@
 using Unity.Netcode;
 using UnityEngine;
 
-public class Enemy : NetworkBehaviour
+public class Enemy : NetworkBehaviour, IDamageable
 {
     [SerializeField] private float _speed = 1f;
+    [field: SerializeField] public int MaxHealth { get; private set; } = 1;
+    private int _currentHealth;
+    public int CurrentHealth
+    {
+        get => _currentHealth;
+        set
+        {
+            if (!IsServer) return;
+            _currentHealth = value;
+            if (_currentHealth <= 0)
+            {
+                NetworkObject.Despawn();
+            }
+        }
+    }
+
     private Rigidbody2D _rb2D;
+
     private void Awake()
     {
         _rb2D = GetComponent<Rigidbody2D>();
+    }
+    public override void OnNetworkSpawn()
+    {
+        _currentHealth = MaxHealth;
+        base.OnNetworkSpawn();
     }
 
     private void FixedUpdate()
@@ -27,8 +49,12 @@ public class Enemy : NetworkBehaviour
     {
         if (collision.CompareTag("Planet"))
         {
-            print(collision);
-            NetworkObject.Despawn();
+            TakeDamage(MaxHealth);
         }
+    }
+
+    public void TakeDamage(int damageAmount)
+    {
+        CurrentHealth -= damageAmount;
     }
 }
