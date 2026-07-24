@@ -4,8 +4,13 @@ using UnityEngine.InputSystem;
 
 public class PlayerShipController : NetworkBehaviour
 {
+    [Header("Movement")]
     [SerializeField] private float _radius = 3f;
     [SerializeField] private float _speed = 2f;
+
+    [Header("Bullet")]
+    [SerializeField] private Bullet _bulletPrefab;
+    [SerializeField] private Transform _spawnPoint;
 
     private float _movementAngle;
     private float MovementAngle
@@ -31,12 +36,21 @@ public class PlayerShipController : NetworkBehaviour
         base.OnNetworkSpawn();
         if (!IsOwner) return;
         _input.Player.Enable();
+        _input.Player.Attack.performed += (_) => SpawnBulletRpc();
         MovementAngle = Random.Range(0f, 360f);
     }
     public override void OnNetworkDespawn()
     {
         base.OnNetworkDespawn();
         _input.Player.Disable();
+    }
+
+    [Rpc(SendTo.Server)]
+    private void SpawnBulletRpc()
+    {
+        var bullet = Instantiate(_bulletPrefab, _spawnPoint.position, Quaternion.identity);
+        bullet.transform.up = transform.up;
+        bullet.NetworkObject.SpawnAsPlayerObject(NetworkManager.Singleton.LocalClientId);
     }
 
     private void Update()

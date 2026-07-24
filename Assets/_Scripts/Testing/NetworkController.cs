@@ -8,14 +8,12 @@ public class NetworkController : MonoBehaviour
     {
         if (Keyboard.current.digit1Key.wasPressedThisFrame)
         {
-            NetworkManager.Singleton.StartHost();
-            print("Starting Host...");
+            GameManager.Instance.ConnectAsHost();
             Destroy(this);
         }
         if (Keyboard.current.digit2Key.wasPressedThisFrame)
         {
-            NetworkManager.Singleton.StartClient();
-            print("Starting Client...");
+            GameManager.Instance.ConnectAsClient();
             Destroy(this);
         }
     }
