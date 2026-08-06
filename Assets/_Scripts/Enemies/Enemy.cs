@@ -4,6 +4,7 @@ using UnityEngine;
 public class Enemy : NetworkBehaviour, IDamageable
 {
     [SerializeField] private float _speed = 1f;
+    [SerializeField] private int _damage = 1;
     [field: SerializeField] public int MaxHealth { get; private set; } = 1;
     private int _currentHealth;
     public int CurrentHealth
@@ -47,9 +48,10 @@ public class Enemy : NetworkBehaviour, IDamageable
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if (collision.CompareTag("Planet"))
+        if (collision.TryGetComponent<IDamageable>(out var damageable))
         {
             TakeDamage(MaxHealth);
+            damageable.TakeDamage(_damage);
         }
     }
 
