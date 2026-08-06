@@ -36,6 +36,14 @@ public class PlayerShipController : NetworkBehaviour
         _input.Player.Enable();
         _input.Player.Attack.performed += OnPlayerAttack;
         MovementAngle = Random.Range(0f, 360f);
+        if (IsHost)
+        {
+            GameManager.Instance.GameStart.AddListener(() => PlayerScoreManager.Instance.AddPlayerRpc(OwnerClientId));
+        }
+        else
+        {
+            PlayerScoreManager.Instance.AddPlayerRpc(OwnerClientId);
+        }
     }
     public override void OnNetworkDespawn()
     {
@@ -54,7 +62,7 @@ public class PlayerShipController : NetworkBehaviour
     {
         var bullet = Instantiate(_bulletPrefab, _spawnPoint.position, Quaternion.identity);
         bullet.transform.up = transform.up;
-        bullet.NetworkObject.SpawnAsPlayerObject(NetworkManager.Singleton.LocalClientId);
+        bullet.NetworkObject.SpawnAsPlayerObject(OwnerClientId);
     }
 
     private void Update()

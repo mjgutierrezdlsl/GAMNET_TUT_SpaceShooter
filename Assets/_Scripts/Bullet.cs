@@ -28,9 +28,9 @@ public class Bullet : NetworkBehaviour
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if (collision.TryGetComponent<IDamageable>(out var damageable))
+        if (collision.TryGetComponent<Enemy>(out var enemy))
         {
-            damageable.TakeDamage(_damage);
+            enemy.TakeDamageRpc(_damage, OwnerClientId);
             NetworkObject.Despawn();
         }
     }

@@ -7,7 +7,6 @@ public class GameManager : NetworkSingleton<GameManager>
 {
     public GameState CurrentState { get; private set; }
     public UnityEvent GameStart, GameEnd;
-    [SerializeField] private Planet _planet;
 
     private void Start()
     {

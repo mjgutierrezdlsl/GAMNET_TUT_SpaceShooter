@@ -1,25 +1,14 @@
+using System;
 using Unity.Netcode;
 using UnityEngine;
 
-public class Enemy : NetworkBehaviour, IDamageable
+public class Enemy : NetworkBehaviour
 {
     [SerializeField] private float _speed = 1f;
     [SerializeField] private int _damage = 1;
+    [SerializeField] private int _scoreValue = 1;
     [field: SerializeField] public int MaxHealth { get; private set; } = 1;
-    private int _currentHealth;
-    public int CurrentHealth
-    {
-        get => _currentHealth;
-        set
-        {
-            if (!IsServer) return;
-            _currentHealth = value;
-            if (_currentHealth <= 0)
-            {
-                NetworkObject.Despawn();
-            }
-        }
-    }
+    private NetworkVariable<int> _currentHealth = new();
 
     private Rigidbody2D _rb2D;
 
@@ -29,9 +18,31 @@ public class Enemy : NetworkBehaviour, IDamageable
     }
     public override void OnNetworkSpawn()
     {
-        _currentHealth = MaxHealth;
         base.OnNetworkSpawn();
+        if (IsServer || IsHost)
+        {
+            _currentHealth.Value = MaxHealth;
+        }
+        _currentHealth.OnValueChanged += OnHealthChanged;
     }
+    public override void OnNetworkDespawn()
+    {
+        base.OnNetworkDespawn();
+        _currentHealth.OnValueChanged -= OnHealthChanged;
+    }
+
+
+    private void OnHealthChanged(int previousValue, int newValue)
+    {
+        if (newValue <= 0)
+        {
+            if (IsServer || IsHost)
+            {
+                NetworkObject.Despawn();
+            }
+        }
+    }
+
 
     private void FixedUpdate()
     {
@@ -48,15 +59,23 @@ public class Enemy : NetworkBehaviour, IDamageable
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if (collision.TryGetComponent<IDamageable>(out var damageable))
+        if (collision.TryGetComponent<Planet>(out var planet))
         {
-            TakeDamage(MaxHealth);
-            damageable.TakeDamage(_damage);
+            planet.TakeDamage(_damage);
+            _currentHealth.Value -= MaxHealth;
         }
     }
 
-    public void TakeDamage(int damageAmount)
+    [Rpc(SendTo.Server)]
+    public void TakeDamageRpc(int damage, ulong bulletOwnerId)
     {
-        CurrentHealth -= damageAmount;
+        _currentHealth.Value -= damage;
+        if (_currentHealth.Value <= 0)
+        {
+            print($"{this} destroyed by Player {bulletOwnerId}'s bullet");
+            PlayerScoreManager.Instance.AddScoreRpc(bulletOwnerId, _scoreValue);
+        }
     }
+
+
 }
