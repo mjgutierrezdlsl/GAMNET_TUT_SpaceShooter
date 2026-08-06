@@ -20,19 +20,15 @@ public class Planet : NetworkSingleton<Planet>, IDamageable
     {
         if (!IsServer) return;
         base.OnNetworkSpawn();
-        GameManager.Instance.GameStart += OnGameStart;
+        CurrentHealth = MaxHealth;
     }
+
     public override void OnNetworkDespawn()
     {
         if (!IsServer) return;
         base.OnNetworkDespawn();
-        GameManager.Instance.GameStart -= OnGameStart;
     }
 
-    private void OnGameStart()
-    {
-        CurrentHealth = MaxHealth;
-    }
 
     public void TakeDamage(int damageAmount)
     {

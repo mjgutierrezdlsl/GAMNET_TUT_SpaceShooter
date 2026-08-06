@@ -17,12 +17,12 @@ public class EnemyManager : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
-        GameManager.Instance.GameStart += SpawnEnemyRpc;
+        GameManager.Instance.GameStart.AddListener(SpawnEnemyRpc);
     }
     public override void OnNetworkDespawn()
     {
         base.OnNetworkDespawn();
-        GameManager.Instance.GameStart -= SpawnEnemyRpc;
+        GameManager.Instance.GameStart.RemoveListener(SpawnEnemyRpc);
     }
 
     [Rpc(SendTo.Server)]
