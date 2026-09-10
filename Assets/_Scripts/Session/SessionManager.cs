@@ -23,7 +23,7 @@ public class SessionManager : Singleton<SessionManager>
 
     public const string PlayerNameKey = "playerName";
 
-    [SerializeField] private UnityEvent _onJoinSession;
+    [SerializeField] private UnityEvent _onConnectSession, _onJoinSession, _onJoinSessionFailed;
 
     private async void Start()
     {
@@ -44,19 +44,6 @@ public class SessionManager : Singleton<SessionManager>
         var playerName = await AuthenticationService.Instance.GetPlayerNameAsync();
         var playerNameProperty = new PlayerProperty(playerName, VisibilityPropertyOptions.Member);
         return new Dictionary<string, PlayerProperty> { { PlayerNameKey, playerNameProperty } };
-    }
-
-    private async void OnApplicationQuit()
-    {
-        if (ActiveSession == null) return;
-        try
-        {
-            await DeleteSessionAsync(ActiveSession);
-        }
-        catch (Exception e)
-        {
-            Debug.LogException(e);
-        }
     }
 
     public async Task DeleteSessionAsync(ISession session)
@@ -84,6 +71,7 @@ public class SessionManager : Singleton<SessionManager>
 
     public async void StartSessionAsHost()
     {
+        _onConnectSession?.Invoke();
         var playerProperties = await GetPlayerPropertiesAsync();
 
         try
@@ -97,11 +85,13 @@ public class SessionManager : Singleton<SessionManager>
         catch (Exception e)
         {
             Debug.LogException(e);
+            _onJoinSessionFailed?.Invoke();
         }
     }
 
     public async void JoinSessionByCode(string code)
     {
+        _onConnectSession?.Invoke();
         var properties = await GetPlayerPropertiesAsync();
         try
         {
@@ -112,11 +102,13 @@ public class SessionManager : Singleton<SessionManager>
         catch (Exception e)
         {
             Debug.LogException(e);
+            _onJoinSessionFailed?.Invoke();
         }
     }
 
     public async void JoinSessionById(string id)
     {
+        _onConnectSession?.Invoke();
         var properties = await GetPlayerPropertiesAsync();
         try
         {
@@ -128,6 +120,7 @@ public class SessionManager : Singleton<SessionManager>
         catch (Exception e)
         {
             Debug.LogException(e);
+            _onJoinSessionFailed?.Invoke();
         }
     }
 
