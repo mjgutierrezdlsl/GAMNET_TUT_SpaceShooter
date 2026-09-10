@@ -5,8 +5,9 @@ using Unity.Services.Authentication;
 using Unity.Services.Core;
 using Unity.Services.Multiplayer;
 using UnityEngine;
+using UnityEngine.Events;
 
-public class SessionManager :Singleton<SessionManager> 
+public class SessionManager : Singleton<SessionManager>
 {
     private ISession _activeSession;
 
@@ -21,6 +22,8 @@ public class SessionManager :Singleton<SessionManager>
     }
 
     public const string PlayerNameKey = "playerName";
+
+    [SerializeField] private UnityEvent _onJoinSession;
 
     private async void Start()
     {
@@ -81,14 +84,15 @@ public class SessionManager :Singleton<SessionManager>
 
     public async void StartSessionAsHost()
     {
-        var playerProperties=await  GetPlayerPropertiesAsync();
-        
+        var playerProperties = await GetPlayerPropertiesAsync();
+
         try
         {
-            var options = new SessionOptions { MaxPlayers = 2 ,PlayerProperties = playerProperties}.WithRelayNetwork();
+            var options = new SessionOptions { MaxPlayers = 2, PlayerProperties = playerProperties }.WithRelayNetwork();
             var session = await MultiplayerService.Instance.CreateSessionAsync(options);
-            Debug.Log($"Session {session.Id} created! Join code: {session.Code}");
+            Debug.Log($"Session {session.Id} created! Join code: {session.Code} | Network State: {session.Network.State:G}");
             ActiveSession = session;
+            _onJoinSession?.Invoke();
         }
         catch (Exception e)
         {
@@ -101,9 +105,9 @@ public class SessionManager :Singleton<SessionManager>
         var properties = await GetPlayerPropertiesAsync();
         try
         {
-            var options = new JoinSessionOptions{PlayerProperties = properties};
-            ActiveSession = await MultiplayerService.Instance.JoinSessionByCodeAsync(code,options);
-            Debug.Log($"Session {ActiveSession.Code} joined!");
+            var options = new JoinSessionOptions { PlayerProperties = properties };
+            ActiveSession = await MultiplayerService.Instance.JoinSessionByCodeAsync(code, options);
+            _onJoinSession?.Invoke();
         }
         catch (Exception e)
         {
@@ -116,9 +120,10 @@ public class SessionManager :Singleton<SessionManager>
         var properties = await GetPlayerPropertiesAsync();
         try
         {
-            var options = new JoinSessionOptions{PlayerProperties = properties};
-            ActiveSession = await MultiplayerService.Instance.JoinSessionByIdAsync(id,options);
+            var options = new JoinSessionOptions { PlayerProperties = properties };
+            ActiveSession = await MultiplayerService.Instance.JoinSessionByIdAsync(id, options);
             Debug.Log($"Session {ActiveSession.Id} joined!");
+            _onJoinSession?.Invoke();
         }
         catch (Exception e)
         {
