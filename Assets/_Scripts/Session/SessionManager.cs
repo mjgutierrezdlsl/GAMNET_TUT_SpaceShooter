@@ -22,8 +22,10 @@ public class SessionManager : Singleton<SessionManager>
     }
 
     public const string PlayerNameKey = "playerName";
+    private string _playerName;
 
     [SerializeField] private UnityEvent _onConnectSession, _onJoinSession, _onJoinSessionFailed;
+    [SerializeField] private UnityEvent<string> _onPlayerNameGet, _onPlayerNameUpdate;
 
     private async void Start()
     {
@@ -31,6 +33,8 @@ public class SessionManager : Singleton<SessionManager>
         {
             await UnityServices.InitializeAsync();
             await AuthenticationService.Instance.SignInAnonymouslyAsync();
+            _playerName = await AuthenticationService.Instance.GetPlayerNameAsync();
+            _onPlayerNameGet?.Invoke(_playerName);
             Debug.Log($"Sign in anonymously succeeded! PlayerID: {AuthenticationService.Instance.PlayerId}");
         }
         catch (Exception e)
@@ -39,11 +43,10 @@ public class SessionManager : Singleton<SessionManager>
         }
     }
 
-    private async Task<Dictionary<string, PlayerProperty>> GetPlayerPropertiesAsync()
+    private Dictionary<string, PlayerProperty> GetPlayerPropertiesAsync()
     {
-        var playerName = await AuthenticationService.Instance.GetPlayerNameAsync();
-        var playerNameProperty = new PlayerProperty(playerName, VisibilityPropertyOptions.Member);
-        return new Dictionary<string, PlayerProperty> { { PlayerNameKey, playerNameProperty } };
+            var playerNameProperty = new PlayerProperty(_playerName, VisibilityPropertyOptions.Member);
+            return new Dictionary<string, PlayerProperty> { { PlayerNameKey, playerNameProperty } };
     }
 
     public async Task DeleteSessionAsync(ISession session)
@@ -69,10 +72,35 @@ public class SessionManager : Singleton<SessionManager>
         }
     }
 
+    public async Task UpdatePlayerName(string playerName)
+    {
+        try
+        {
+          _playerName = await AuthenticationService.Instance.UpdatePlayerNameAsync(playerName);
+           _onPlayerNameUpdate?.Invoke(_playerName);
+        }
+        catch (Exception e)
+        {
+            Debug.LogException(e);
+        }
+    }
+
+    public async Task DeleteAccount()
+    {
+        try
+        {
+           await AuthenticationService.Instance.DeleteAccountAsync();
+        }
+        catch (Exception e)
+        {
+            Debug.LogException(e);
+        }
+    }
+    
     public async void StartSessionAsHost()
     {
         _onConnectSession?.Invoke();
-        var playerProperties = await GetPlayerPropertiesAsync();
+        var playerProperties = GetPlayerPropertiesAsync();
 
         try
         {
@@ -92,7 +120,7 @@ public class SessionManager : Singleton<SessionManager>
     public async void JoinSessionByCode(string code)
     {
         _onConnectSession?.Invoke();
-        var properties = await GetPlayerPropertiesAsync();
+        var properties = GetPlayerPropertiesAsync();
         try
         {
             var options = new JoinSessionOptions { PlayerProperties = properties };
@@ -109,7 +137,7 @@ public class SessionManager : Singleton<SessionManager>
     public async void JoinSessionById(string id)
     {
         _onConnectSession?.Invoke();
-        var properties = await GetPlayerPropertiesAsync();
+        var properties = GetPlayerPropertiesAsync();
         try
         {
             var options = new JoinSessionOptions { PlayerProperties = properties };
