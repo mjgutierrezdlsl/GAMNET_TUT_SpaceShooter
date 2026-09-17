@@ -23,6 +23,7 @@ public class SessionManager : Singleton<SessionManager>
     private string _playerName;
 
     public const string KEY_PLAYER_READY = "playerReady";
+    public const string KEY_READY_COUNT = "readyCount";
 
     [SerializeField] private UnityEvent _onConnectSession, _onJoinSession, _onJoinSessionFailed;
     [SerializeField] private UnityEvent<string> _onPlayerNameGet, _onPlayerNameUpdate;

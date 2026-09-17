@@ -10,18 +10,52 @@ public class PlayerLobbyDialog : MonoBehaviour
     [SerializeField] private LobbyPlayerView _prefab;
     [SerializeField] private Transform _root;
     [SerializeField] private TextMeshProUGUI _roomCode;
-    [SerializeField] private Button _readyButton;
-    private bool _isReady;
+    [SerializeField] private Button _readyButton, _startButton;
 
+    private bool _isReady;
     public bool IsReady
     {
         get => _isReady;
         set
         {
             _isReady = value;
-            _readyButton.interactable = !_isReady;
+            _readyButton.GetComponentInChildren<TextMeshProUGUI>().text = !_isReady ? "Ready" : "Unready";
         }
     }
+
+    private int readyCount;
+    public int ReadyCount
+    {
+        get => readyCount;
+        set
+        {
+            readyCount = value;
+            UpdateReadyCount();
+        }
+    }
+
+    private async void UpdateReadyCount()
+    {
+        if (!_isHost) return;
+        try
+        {
+            var hostSession = SessionManager.Instance.ActiveSession.AsHost();
+            var properties = new Dictionary<string, SessionProperty>
+            {
+                {SessionManager.KEY_PLAYER_READY,new SessionProperty(readyCount.ToString(),VisibilityPropertyOptions.Private)}
+            };
+            hostSession.SetProperties(properties);
+            await hostSession.SavePropertiesAsync();
+            Debug.Log("Session Properties Saved");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogException(e);
+        }
+    }
+
+    private bool _isHost;
+
     private Dictionary<string, LobbyPlayerView> _playerViews = new Dictionary<string, LobbyPlayerView>();
 
     private void OnEnable()
@@ -30,6 +64,11 @@ public class PlayerLobbyDialog : MonoBehaviour
         SessionManager.Instance.ActiveSession.PlayerHasLeft += OnPlayerLeft;
         SessionManager.Instance.ActiveSession.PlayerPropertiesChanged += OnPlayerPropertiesChanged;
         _roomCode.text = $"Room Code: {SessionManager.Instance.ActiveSession.Code}";
+        _isHost = SessionManager.Instance.ActiveSession.IsHost;
+        if (_isHost)
+        {
+            SessionManager.Instance.ActiveSession.SessionPropertiesChanged += OnSessionPropertiesChanged;
+        }
     }
 
     private void OnDisable()
@@ -37,6 +76,19 @@ public class PlayerLobbyDialog : MonoBehaviour
         SessionManager.Instance.ActiveSession.Changed -= GenerateViews;
         SessionManager.Instance.ActiveSession.PlayerHasLeft -= OnPlayerLeft;
         SessionManager.Instance.ActiveSession.PlayerPropertiesChanged -= OnPlayerPropertiesChanged;
+        if (_isHost)
+        {
+            SessionManager.Instance.ActiveSession.SessionPropertiesChanged -= OnSessionPropertiesChanged;
+        }
+    }
+
+    private void OnSessionPropertiesChanged()
+    {
+        if (!_isHost) return;
+        SessionManager.Instance.ActiveSession.Properties.TryGetValue(SessionManager.KEY_PLAYER_READY, out var property);
+        var count = Int32.Parse(property.Value);
+        Debug.Log($"Ready Count: {count}");
+        _startButton.gameObject.SetActive(count == SessionManager.Instance.ActiveSession.PlayerCount);
     }
 
     private void OnPlayerPropertiesChanged()
@@ -46,7 +98,17 @@ public class PlayerLobbyDialog : MonoBehaviour
             var view = _playerViews[player.Id];
             if (player.Properties.TryGetValue(SessionManager.KEY_PLAYER_READY, out var property))
             {
-                view.NameLabel.color = property.Value == "true" ? Color.green : Color.white;
+                if (property.Value == "true")
+                {
+
+                    view.NameLabel.color = Color.green;
+                    ReadyCount++;
+                }
+                else
+                {
+                    view.NameLabel.color = Color.white;
+                    ReadyCount--;
+                }
             }
         }
     }
