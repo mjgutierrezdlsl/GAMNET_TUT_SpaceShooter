@@ -1,6 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
+using Unity.Netcode;
 using Unity.Services.Authentication;
 using Unity.Services.Core;
 using Unity.Services.Multiplayer;
@@ -10,7 +10,6 @@ using UnityEngine.Events;
 public class SessionManager : Singleton<SessionManager>
 {
     private ISession _activeSession;
-
     public ISession ActiveSession
     {
         get => _activeSession;
@@ -21,8 +20,9 @@ public class SessionManager : Singleton<SessionManager>
         }
     }
 
-    public const string PlayerNameKey = "playerName";
     private string _playerName;
+
+    public const string KEY_PLAYER_READY = "playerReady";
 
     [SerializeField] private UnityEvent _onConnectSession, _onJoinSession, _onJoinSessionFailed;
     [SerializeField] private UnityEvent<string> _onPlayerNameGet, _onPlayerNameUpdate;
@@ -41,12 +41,6 @@ public class SessionManager : Singleton<SessionManager>
         {
             Debug.LogException(e);
         }
-    }
-
-    private Dictionary<string, PlayerProperty> GetPlayerPropertiesAsync()
-    {
-            var playerNameProperty = new PlayerProperty(_playerName, VisibilityPropertyOptions.Member);
-            return new Dictionary<string, PlayerProperty> { { PlayerNameKey, playerNameProperty } };
     }
 
     public async Task DeleteSessionAsync(ISession session)
@@ -76,8 +70,8 @@ public class SessionManager : Singleton<SessionManager>
     {
         try
         {
-          _playerName = await AuthenticationService.Instance.UpdatePlayerNameAsync(playerName);
-           _onPlayerNameUpdate?.Invoke(_playerName);
+            _playerName = await AuthenticationService.Instance.UpdatePlayerNameAsync(playerName);
+            _onPlayerNameUpdate?.Invoke(_playerName);
         }
         catch (Exception e)
         {
@@ -89,22 +83,21 @@ public class SessionManager : Singleton<SessionManager>
     {
         try
         {
-           await AuthenticationService.Instance.DeleteAccountAsync();
+            await AuthenticationService.Instance.DeleteAccountAsync();
         }
         catch (Exception e)
         {
             Debug.LogException(e);
         }
     }
-    
+
     public async void StartSessionAsHost()
     {
         _onConnectSession?.Invoke();
-        var playerProperties = GetPlayerPropertiesAsync();
 
         try
         {
-            var options = new SessionOptions { MaxPlayers = 2, PlayerProperties = playerProperties }.WithRelayNetwork();
+            var options = new SessionOptions { MaxPlayers = 2 }.WithRelayNetwork().WithPlayerName();
             var session = await MultiplayerService.Instance.CreateSessionAsync(options);
             Debug.Log($"Session {session.Id} created! Join code: {session.Code} | Network State: {session.Network.State:G}");
             ActiveSession = session;
@@ -120,10 +113,9 @@ public class SessionManager : Singleton<SessionManager>
     public async void JoinSessionByCode(string code)
     {
         _onConnectSession?.Invoke();
-        var properties = GetPlayerPropertiesAsync();
         try
         {
-            var options = new JoinSessionOptions { PlayerProperties = properties };
+            var options = new JoinSessionOptions().WithPlayerName();
             ActiveSession = await MultiplayerService.Instance.JoinSessionByCodeAsync(code, options);
             _onJoinSession?.Invoke();
         }
@@ -137,10 +129,9 @@ public class SessionManager : Singleton<SessionManager>
     public async void JoinSessionById(string id)
     {
         _onConnectSession?.Invoke();
-        var properties = GetPlayerPropertiesAsync();
         try
         {
-            var options = new JoinSessionOptions { PlayerProperties = properties };
+            var options = new JoinSessionOptions().WithPlayerName();
             ActiveSession = await MultiplayerService.Instance.JoinSessionByIdAsync(id, options);
             Debug.Log($"Session {ActiveSession.Id} joined!");
             _onJoinSession?.Invoke();
