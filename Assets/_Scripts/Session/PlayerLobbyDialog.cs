@@ -58,6 +58,8 @@ public class PlayerLobbyDialog : MonoBehaviour
 
     private Dictionary<string, LobbyPlayerView> _playerViews = new Dictionary<string, LobbyPlayerView>();
 
+    private Dictionary<string, Dictionary<string, PlayerProperty>> _playerCache = new();
+
     private void OnEnable()
     {
         SessionManager.Instance.ActiveSession.Changed += GenerateViews;
@@ -95,19 +97,42 @@ public class PlayerLobbyDialog : MonoBehaviour
     {
         foreach (var player in SessionManager.Instance.ActiveSession.Players)
         {
-            var view = _playerViews[player.Id];
-            if (player.Properties.TryGetValue(SessionManager.KEY_PLAYER_READY, out var property))
+
+            // NOTE: player cache implementation assisted by Gemini
+            if (!_playerCache.ContainsKey(player.Id))
             {
+                _playerCache[player.Id] = new Dictionary<string, PlayerProperty>();
+            }
+
+            var cachedProps = _playerCache[player.Id];
+
+            var view = _playerViews[player.Id];
+
+            foreach (var (key, property) in player.Properties)
+            {
+                string newValue = property.Value;
+                if (key != SessionManager.KEY_PLAYER_READY) continue;
                 if (property.Value == "true")
                 {
-
                     view.NameLabel.color = Color.green;
-                    ReadyCount++;
                 }
                 else
                 {
                     view.NameLabel.color = Color.white;
-                    ReadyCount--;
+                }
+
+                // only increment the ready count if the property has changed
+                if (!cachedProps.TryGetValue(key, out var oldProp) || oldProp.Value != newValue)
+                {
+                    cachedProps[key] = property;
+                    if (property.Value == "true")
+                    {
+                        ReadyCount++;
+                    }
+                    else if (property.Value == "false")
+                    {
+                        ReadyCount--;
+                    }
                 }
             }
         }
