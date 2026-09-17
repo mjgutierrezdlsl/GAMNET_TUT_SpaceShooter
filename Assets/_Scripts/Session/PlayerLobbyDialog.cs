@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using TMPro;
+using Unity.Netcode;
 using Unity.Services.Multiplayer;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class PlayerLobbyDialog : MonoBehaviour
@@ -110,16 +112,9 @@ public class PlayerLobbyDialog : MonoBehaviour
 
             foreach (var (key, property) in player.Properties)
             {
-                string newValue = property.Value;
+                var newValue = property.Value;
                 if (key != SessionManager.KEY_PLAYER_READY) continue;
-                if (property.Value == "true")
-                {
-                    view.NameLabel.color = Color.green;
-                }
-                else
-                {
-                    view.NameLabel.color = Color.white;
-                }
+                view.NameLabel.color = property.Value == "true" ? Color.green : Color.white;
 
                 // only increment the ready count if the property has changed
                 if (!cachedProps.TryGetValue(key, out var oldProp) || oldProp.Value != newValue)
@@ -184,6 +179,14 @@ public class PlayerLobbyDialog : MonoBehaviour
     public async void LeaveRoom()
     {
         await SessionManager.Instance.LeaveSession();
+    }
+
+    public void LoadGameScene()
+    {
+        if(NetworkManager.Singleton.IsHost)
+        {
+            NetworkManager.Singleton.SceneManager.LoadScene("Game",LoadSceneMode.Single);
+        }
     }
 }
 
