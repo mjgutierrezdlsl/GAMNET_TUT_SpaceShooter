@@ -49,8 +49,9 @@ public class GameManager : NetworkSingleton<GameManager>
     {
         foreach (var client in clientsCompleted)
         {
+            if (NetworkManager.ConnectedClients[client].PlayerObject != null) continue;
             var ship = Instantiate(_playerShipPrefab);
-            ship.NetworkObject.SpawnAsPlayerObject(client);
+            ship.GetComponent<NetworkObject>().SpawnAsPlayerObject(client, true);
         }
         StartGame();
     }
