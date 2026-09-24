@@ -8,8 +8,19 @@ using UnityEngine.SceneManagement;
 public class GameManager : NetworkSingleton<GameManager>
 {
     [SerializeField] PlayerShipController _playerShipPrefab;
-    public GameState CurrentState { get; private set; }
+    List<PlayerShipController> _playerShips = new();
+    public GameState CurrentState
+    {
+        get => currentState;
+        private set
+        {
+            currentState = value;
+            StateChanged?.Invoke(currentState);
+        }
+    }
+    public event Action<GameState> StateChanged;
     public UnityEvent GameStart, GameEnd;
+    private GameState currentState;
 
     private void Start()
     {
@@ -27,6 +38,13 @@ public class GameManager : NetworkSingleton<GameManager>
         print("Ending Game...");
         CurrentState = GameState.POSTGAME;
         GameEnd?.Invoke();
+        if (IsServer)
+        {
+            foreach (var player in _playerShips)
+            {
+                player.GetComponent<NetworkObject>().Despawn();
+            }
+        }
     }
 
     public override void OnNetworkSpawn()
@@ -52,6 +70,7 @@ public class GameManager : NetworkSingleton<GameManager>
             if (NetworkManager.ConnectedClients[client].PlayerObject != null) continue;
             var ship = Instantiate(_playerShipPrefab);
             ship.GetComponent<NetworkObject>().SpawnAsPlayerObject(client, true);
+            _playerShips.Add(ship);
         }
         StartGame();
     }

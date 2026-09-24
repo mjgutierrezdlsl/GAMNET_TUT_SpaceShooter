@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -6,6 +7,7 @@ public class EnemyManager : NetworkBehaviour
 {
     [SerializeField] private Enemy _prefab;
     [SerializeField] private float _minSpawnInterval = 0.2f, _maxSpawnInterval = 1f;
+    private List<Enemy> _enemies = new();
 
     private Camera _camera;
 
@@ -18,17 +20,40 @@ public class EnemyManager : NetworkBehaviour
     {
         base.OnNetworkSpawn();
         GameManager.Instance.GameStart.AddListener(SpawnEnemyRpc);
+        GameManager.Instance.StateChanged += OnGameStateChanged;
     }
     public override void OnNetworkDespawn()
     {
         base.OnNetworkDespawn();
         GameManager.Instance.GameStart.RemoveListener(SpawnEnemyRpc);
+        GameManager.Instance.StateChanged -= OnGameStateChanged;
     }
+
+    private void OnGameStateChanged(GameState state)
+    {
+        if (state == GameState.POSTGAME)
+        {
+            StopAllCoroutines();
+            ClearEnemiesRpc();
+        }
+    }
+
 
     [Rpc(SendTo.Server)]
     public void SpawnEnemyRpc()
     {
         StartCoroutine(SpawnEnemyRoutine());
+    }
+
+    [Rpc(SendTo.Server)]
+    public void ClearEnemiesRpc()
+    {
+        foreach (var enemy in _enemies)
+        {
+            if (enemy == null) continue;
+            enemy.GetComponent<NetworkObject>().Despawn();
+        }
+        _enemies.Clear();
     }
 
     private IEnumerator SpawnEnemyRoutine()
@@ -39,6 +64,7 @@ public class EnemyManager : NetworkBehaviour
             yield return new WaitForSeconds(interval);
             var enemy = Instantiate(_prefab, GetRandomEdgePosition(), Quaternion.identity);
             enemy.NetworkObject.Spawn();
+            _enemies.Add(enemy);
         }
     }
 

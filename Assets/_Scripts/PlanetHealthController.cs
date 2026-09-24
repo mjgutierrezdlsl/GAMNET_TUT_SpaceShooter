@@ -10,6 +10,12 @@ public class PlanetHealthController : NetworkBehaviour
     private void Update()
     {
         if (GameManager.Instance.CurrentState != GameState.RUNNING) return;
+        UpdateHealthRpc();
+    }
+
+    [Rpc(SendTo.Everyone)]
+    public void UpdateHealthRpc()
+    {
         _healthFillImage.fillAmount = (float)Planet.Instance.Health.Value / Planet.Instance.MaxHealth;
     }
 
